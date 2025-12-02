@@ -57,6 +57,8 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+---
+
 ## How to use the GUI
 
 ### Step 1 — Load data
