@@ -22,7 +22,7 @@ from scipy.optimize import fsolve, curve_fit
 import pyspedas
 import pytplot
 
-# --------------------------- helpers ---------------------------
+# HELPERS
 
 def to_ts(s: str) -> float:
     return datetime.strptime(s.strip(), "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc).timestamp()
@@ -174,7 +174,7 @@ def quadratic_time_at_height(t_sec, h_arr, target_h=20.0):
     except Exception:
         return None
 
-# --------------------------- data classes ---------------------------
+# DATA CLASSES
 
 @dataclass
 class MissionVars:
@@ -193,7 +193,7 @@ class MissionVars:
     t_T: np.ndarray
     Tp: np.ndarray
     t_pos: np.ndarray
-    R_sun: np.ndarray   # radial distance; PSP: km
+    R_sun: np.ndarray  
 
 class MissionLoader:
     def __init__(self, mission: str, trange):
@@ -229,7 +229,7 @@ class MissionLoader:
         vz = pytplot.get_data(v_vec + '_z')
         t_v = vx.times
         Vx, Vy, Vz = vx.y, vy.y, vz.y
-        Vrad = Vx  # radial (R in RTN)
+        Vrad = Vx 
 
         n_name = first_existing('psp_spc_np_fit', 'psp_spc_np_moment')
         n_dat = pytplot.get_data(n_name)
@@ -242,7 +242,7 @@ class MissionLoader:
         wp = wp_dat.y
         mp = 1.6726e-27
         kB = 1.380649e-23
-        Tp = (wp ** 2 * mp) / (2.0 * kB)  # K (plotted as "eV" by convention)
+        Tp = (wp ** 2 * mp) / (2.0 * kB) 
 
         pyspedas.psp.spc(trange=self.trange, datatype='l3i', level='l3', time_clip=True,
                          varnames=['sc_pos_HCI'])
@@ -255,7 +255,6 @@ class MissionLoader:
             py = pytplot.get_data(pos_name + '_y')
             pz = pytplot.get_data(pos_name + '_z')
             t_pos = px.times
-            # sc_pos_HCI is in km for PSP: keep in km
             R_sun = np.sqrt(px.y ** 2 + py.y ** 2 + pz.y ** 2)
 
         return MissionVars(
@@ -420,7 +419,7 @@ class MissionLoader:
             t_pos=np.array([]), R_sun=np.array([])
         )
 
-# --------------------------- plotting widgets ---------------------------
+# PLOTTING WIDGETS
 
 class MplPanel(FigureCanvas):
     def __init__(self, title, ylabel, logy=False):
@@ -478,7 +477,6 @@ class ResultsDialog(QDialog):
         btn.clicked.connect(self.accept)
         layout.addWidget(btn)
 
-# Simple canvas for histograms (non-time axes)
 class SimpleMplCanvas(FigureCanvas):
     def __init__(self, xlabel, ylabel):
         fig = Figure(figsize=(5, 3), tight_layout=True)
@@ -488,7 +486,7 @@ class SimpleMplCanvas(FigureCanvas):
         self.ax.set_ylabel(ylabel)
         self.ax.grid(True, alpha=0.25)
 
-# --------------------------- SW histograms dialog ---------------------------
+# SW HISTOGRAMS DIALOG
 
 def gaussian_mixture(x, *params):
     """Sum of N Gaussians: params = [mu1, sigma1, A1, mu2, sigma2, A2, ...]."""
@@ -558,7 +556,6 @@ class SWFitDialog(QDialog):
         )
         layout.addWidget(lbl_info)
 
-        # Density section
         dens_box = QVBoxLayout()
         dens_header = QHBoxLayout()
         dens_header.addWidget(QLabel("Density histogram (Np, cm⁻³)"))
@@ -573,7 +570,6 @@ class SWFitDialog(QDialog):
         self.canvas_n = SimpleMplCanvas("Np [cm⁻³]", "Counts")
         dens_box.addWidget(self.canvas_n)
 
-        # Speed section
         speed_box = QVBoxLayout()
         speed_header = QHBoxLayout()
         speed_header.addWidget(QLabel("Speed histogram (v, km/s)"))
@@ -591,12 +587,10 @@ class SWFitDialog(QDialog):
         layout.addLayout(dens_box)
         layout.addLayout(speed_box)
 
-        # Text summary
         self.txtSummary = QTextEdit()
         self.txtSummary.setReadOnly(True)
         layout.addWidget(self.txtSummary)
 
-        # Buttons
         btn_box = QHBoxLayout()
         self.btnRefit = QPushButton("Refit")
         self.btnApply = QPushButton("Apply & Close")
@@ -613,7 +607,6 @@ class SWFitDialog(QDialog):
         self.spnCompN.valueChanged.connect(self.refit_all)
         self.spnCompV.valueChanged.connect(self.refit_all)
 
-        # Prepare histograms
         self.n_hist = None
         self.n_edges = None
         self.v_hist = None
@@ -625,9 +618,7 @@ class SWFitDialog(QDialog):
         self.refit_all()
 
     def init_histograms(self):
-        # Density histogram
         self.n_hist, self.n_edges = np.histogram(self.n_sw_vals, bins=80)
-        # Speed histogram
         self.v_hist, self.v_edges = np.histogram(self.v_sw_vals, bins=60)
 
     def fit_mixture(self, x_cent, y_hist, n_comp):
@@ -636,7 +627,6 @@ class SWFitDialog(QDialog):
         x_min, x_max = float(np.min(x_cent)), float(np.max(x_cent))
         if x_max <= x_min:
             return None
-        # initial guesses: split x_cent into n_comp segments
         n_bins = len(x_cent)
         seg_size = max(1, n_bins // n_comp)
         p0 = []
@@ -656,7 +646,6 @@ class SWFitDialog(QDialog):
             if np.any(yc_seg > 0):
                 mu_j = float(np.sum(xc_seg * yc_seg) / np.sum(yc_seg))
             else:
-                # fallback: evenly spaced
                 mu_j = x_min + (j + 0.5) * (x_max - x_min) / n_comp
             sigma_j = 0.15 * (x_max - x_min) if x_max > x_min else 1.0
             A_j = y_max / n_comp if y_max > 0 else 1.0
@@ -681,7 +670,6 @@ class SWFitDialog(QDialog):
             return None
 
     def refit_all(self):
-        # Fit density
         x_cent_n = 0.5 * (self.n_edges[1:] + self.n_edges[:-1])
         x_cent_v = 0.5 * (self.v_edges[1:] + self.v_edges[:-1])
 
@@ -691,7 +679,6 @@ class SWFitDialog(QDialog):
         self.n_params = self.fit_mixture(x_cent_n, self.n_hist, n_comp_n)
         self.v_params = self.fit_mixture(x_cent_v, self.v_hist, n_comp_v)
 
-        # Update density canvas
         axn = self.canvas_n.ax
         axn.cla()
         axn.grid(True, alpha=0.25)
@@ -703,7 +690,6 @@ class SWFitDialog(QDialog):
             axn.plot(x_cent_n, yy, lw=1.5)
         self.canvas_n.draw_idle()
 
-        # Update speed canvas
         axv = self.canvas_v.ax
         axv.cla()
         axv.grid(True, alpha=0.25)
@@ -715,7 +701,6 @@ class SWFitDialog(QDialog):
             axv.plot(x_cent_v, yy, lw=1.5)
         self.canvas_v.draw_idle()
 
-        # Compute effective moments and show summary
         mu_n, sig_n = mixture_moments(self.n_params)
         mu_v, sig_v = mixture_moments(self.v_params)
 
@@ -758,7 +743,7 @@ class SWFitDialog(QDialog):
         self.result_ready = True
         self.accept()
 
-# --------------------------- main GUI ---------------------------
+# MAIN GUI
 
 class CMEGUI(QWidget):
     def __init__(self):
@@ -779,7 +764,6 @@ class CMEGUI(QWidget):
         self.last_dep_window = None
         self.last_v0_window = None
 
-        # --- Controls ---
         ctrl = QGridLayout()
 
         ctrl.addWidget(QLabel("Mission:"), 0, 0)
@@ -799,7 +783,6 @@ class CMEGUI(QWidget):
         self.btnLoad.clicked.connect(self.load_data)
         ctrl.addWidget(self.btnLoad, 0, 6)
 
-        # boundaries
         row = 1
         ctrl.addWidget(QLabel("Sheath start (UTC):"), row, 0)
         self.edSheath = QLineEdit("")
@@ -826,7 +809,6 @@ class CMEGUI(QWidget):
         self.btnUpdate.clicked.connect(self.update_boundaries_clicked)
         ctrl.addWidget(self.btnUpdate, row, 5)
 
-        # SW fit & Cd & solver control
         row += 1
         ctrl.addWidget(QLabel("Hours before sheath for SW fit:"), row, 0)
         self.spnSWHours = QSpinBox()
@@ -847,7 +829,6 @@ class CMEGUI(QWidget):
         self.spnMaxIter.setValue(10000)
         ctrl.addWidget(self.spnMaxIter, row, 5)
 
-        # v0, T initial guesses
         ctrl.addWidget(QLabel("v0 guess [km/s]:"), row, 6)
         self.spnV0Guess = QDoubleSpinBox()
         self.spnV0Guess.setRange(0.0, 4000.0)
@@ -871,7 +852,6 @@ class CMEGUI(QWidget):
         self.btnSolve.clicked.connect(self.solve_dbm_only)
         ctrl.addWidget(self.btnSolve, row, 7)
 
-        # LASCO + save + SW hist fit
         row += 1
         self.btnLASCO = QPushButton("Search LASCO Catalogue")
         self.btnLASCO.clicked.connect(self.search_lasco_catalogue)
@@ -885,7 +865,6 @@ class CMEGUI(QWidget):
         self.btnSWFit.clicked.connect(self.open_sw_fit_dialog)
         ctrl.addWidget(self.btnSWFit, row, 6, 1, 2)
 
-        # parameter displays
         row += 1
         param_box = QGridLayout()
         self.lbl_dt = QLabel("dt: –")
@@ -913,8 +892,7 @@ class CMEGUI(QWidget):
         param_box.addWidget(self.lbl_depwin, 2, 1)
 
         ctrl.addLayout(param_box, row, 0, 1, 9)
-
-        # plots (scrollable)
+        
         self.pB = MplPanel("|B| and components", "B [nT]", logy=False)
         self.pT = MplPanel("Proton Temperature", "T [eV]", logy=False)
         self.pV = MplPanel("Flow Speed (radial or bulk)", "v [km s$^{-1}$]", logy=False)
@@ -935,7 +913,7 @@ class CMEGUI(QWidget):
         lay.addLayout(ctrl)
         lay.addWidget(self.scroll)
 
-    # -------------------- helpers for plotting --------------------
+    # HELPERS FOR PLOTTING
 
     def _plot_mask(self):
         if self.t_unix is None:
@@ -955,7 +933,7 @@ class CMEGUI(QWidget):
         except Exception:
             return self.t_mpl[0], self.t_mpl[-1]
 
-    # -------------------- core actions --------------------
+    # CORE ACTIONS
 
     def load_data(self):
         try:
@@ -1074,7 +1052,7 @@ class CMEGUI(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "Update failed", f"{type(e).__name__}: {e}")
 
-    # -------------------- Compute parameters --------------------
+    # COMPUTE PARAMETERS
 
     def compute_parameters_only(self):
         try:
@@ -1127,7 +1105,6 @@ class CMEGUI(QWidget):
             sw_start = self.sheath_t - sw_hours * 3600.0
             sw_end = self.sheath_t
 
-            # Pre-sheath density for rho_sw
             mask_sw_n = (t_ref >= sw_start) & (t_ref < sw_end)
             n_sw_vals = self.Np[mask_sw_n]
             n_sw_vals = n_sw_vals[np.isfinite(n_sw_vals)]
@@ -1143,7 +1120,6 @@ class CMEGUI(QWidget):
             rho_sw = mu_n * n_to_m3 * mp
             sigma_rho_sw = sig_n * n_to_m3 * mp
 
-            # Pre-sheath speed for w
             mask_sw_v = (t_ref >= sw_start) & (t_ref < sw_end)
             v_sw_vals = self.Vrad[mask_sw_v]
             v_sw_vals = v_sw_vals[np.isfinite(v_sw_vals)]
@@ -1162,7 +1138,7 @@ class CMEGUI(QWidget):
 
             def gamma_from_inputs_km(Cd, L_km, sigma_L_km, rho, sigma_rho, rho_sw, sigma_rho_sw):
                 rho_ratio = rho / rho_sw
-                g = Cd / (L_km * (rho_ratio + 0.5))  # 1/km
+                g = Cd / (L_km * (rho_ratio + 0.5))
                 sigma_g = math.sqrt(
                     (Cd ** 2 * sigma_L_km ** 2) / (((rho_ratio + 0.5) ** 2) * (L_km ** 4)) +
                     (Cd ** 2 * sigma_rho ** 2) / (((rho_ratio + 0.5) ** 4) * (L_km ** 2) * (rho_sw ** 2)) +
@@ -1200,7 +1176,7 @@ class CMEGUI(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "Compute failed", f"{type(e).__name__}: {e}")
 
-    # -------------------- SW histogram dialog integration --------------------
+    # SW HISTOGRAM DIALOG INTEGRATION
 
     def open_sw_fit_dialog(self):
         try:
@@ -1224,18 +1200,15 @@ class CMEGUI(QWidget):
                 if not np.isfinite(rho_sw) or not np.isfinite(w_kms):
                     raise RuntimeError("Fitted SW parameters are not finite.")
 
-                # Update labels
                 self.lbl_rhosw.setText(f"ρ_sw (multi-Gauss): {rho_sw:.3e} ± {sigma_rho_sw:.3e} kg/m³")
                 self.lbl_w.setText(f"w (multi-Gauss): {w_kms:.2f} ± {sigma_w_kms:.2f} km/s")
 
-                # Update cache params, recompute gamma with new rho_sw if desired
                 p = self._cache_params
                 p['rho_sw'] = rho_sw
                 p['srho_sw'] = sigma_rho_sw
                 p['w_kms'] = w_kms
                 p['sw_kms'] = sigma_w_kms
 
-                # Recompute gamma with updated rho_sw and sigma_rho_sw
                 Cd0 = p['Cd0']
                 L_km = p['L_km']
                 sigma_L_km = p['sL_km']
@@ -1262,7 +1235,7 @@ class CMEGUI(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "SW fit failed", f"{type(e).__name__}: {e}")
 
-    # -------------------- Solve DBM --------------------
+    # SOLVE DBM
 
     def solve_dbm_only(self):
         try:
@@ -1300,7 +1273,6 @@ class CMEGUI(QWidget):
             Rs_km = 6.957e5
             r0_km = 20.0 * Rs_km
 
-            # PSP radial distance: sc_pos_HCI is already in km
             if self.data.R_sun.size > 1:
                 mask_mo = (self.data.t_pos >= self.narrow1_t) & (self.data.t_pos <= self.narrow2_t)
                 r_series_km = self.data.R_sun[mask_mo]
@@ -1410,7 +1382,6 @@ class CMEGUI(QWidget):
 
             sols_v0, sols_t = [], []
 
-            # Physically motivated initial guesses for v0
             v0_guesses = [
                 max(50.0, v_kms),
                 max(50.0, vt_kms),
@@ -1449,7 +1420,6 @@ class CMEGUI(QWidget):
             v0_min, v0_max = float(np.nanmin(v0_solutions_kms)), float(np.nanmax(v0_solutions_kms))
             T_min, T_max = float(np.nanmin(T_solutions)), float(np.nanmax(T_solutions))
 
-            # Use wide MO boundaries for departure window, as requested
             dep_start = self.wide1_t - T_max
             dep_end = self.narrow1_t - T_min
             self.last_dep_window = (dep_start, dep_end)
@@ -1467,7 +1437,7 @@ class CMEGUI(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "DBM failed", f"{type(e).__name__}: {e}")
 
-    # -------------------- Save plots as one image --------------------
+    #  SAVE PLOTS AS IMAGE
 
     def save_all_plots_image(self):
         try:
@@ -1547,7 +1517,7 @@ class CMEGUI(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "Save failed", f"{type(e).__name__}: {e}")
 
-    # -------------------- LASCO search --------------------
+    # LASCO CATALOG SEARCH
 
     def search_lasco_catalogue(self):
         try:
@@ -1705,8 +1675,9 @@ class CMEGUI(QWidget):
 
         except Exception as e:
             QMessageBox.critical(self, "LASCO search failed", f"{type(e).__name__}: {e}")
+            
 
-# --------------------------- main ---------------------------
+# MAIN
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
