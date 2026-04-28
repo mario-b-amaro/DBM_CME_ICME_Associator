@@ -41,8 +41,14 @@ def nearest_series(x_src, y_src, x_ref):
 
 def mag_mag_components_from_tplot(base_name_candidates):
     names = pytplot.tplot_names()
+    # 1) Try explicit candidates first; accept either split components or native Nx3 vectors.
     for base in base_name_candidates:
         if base in names:
+            dat = pytplot.get_data(base)
+            if dat is not None and getattr(dat, 'y', None) is not None:
+                arr = np.asarray(dat.y)
+                if arr.ndim == 2 and arr.shape[1] >= 3:
+                    return dat.times, arr[:, 0], arr[:, 1], arr[:, 2]
             pytplot.split_vec(base)
             try:
                 bx = pytplot.get_data(f"{base}_x")
@@ -52,6 +58,14 @@ def mag_mag_components_from_tplot(base_name_candidates):
                     return bx.times, bx.y, by.y, bz.y
             except Exception:
                 pass
+    # 2) Look through all loaded variables for likely magnetic vectors.
+    for nm in names:
+        if any(k in nm.lower() for k in ['mag', 'mfi', 'b_']):
+            dat = pytplot.get_data(nm)
+            if dat is not None and getattr(dat, 'y', None) is not None:
+                arr = np.asarray(dat.y)
+                if arr.ndim == 2 and arr.shape[1] >= 3:
+                    return dat.times, arr[:, 0], arr[:, 1], arr[:, 2]
     for nm in names:
         if nm.endswith('_x'):
             root = nm[:-2]
@@ -60,6 +74,13 @@ def mag_mag_components_from_tplot(base_name_candidates):
                 by = pytplot.get_data(root + '_y')
                 bz = pytplot.get_data(root + '_z')
                 return bx.times, bx.y, by.y, bz.y
+    # 3) Final fallback: any vector-like variable.
+    for nm in names:
+        dat = pytplot.get_data(nm)
+        if dat is not None and getattr(dat, 'y', None) is not None:
+            arr = np.asarray(dat.y)
+            if arr.ndim == 2 and arr.shape[1] >= 3:
+                return dat.times, arr[:, 0], arr[:, 1], arr[:, 2]
     return None, None, None, None
 
 
