@@ -1,4 +1,4 @@
-"""Backward-compatible launcher for DBM Associator GUI."""
+"""Launcher for DBM Associator GUI."""
 
 from dbm_associator.main import run
 
