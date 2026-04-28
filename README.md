@@ -166,7 +166,7 @@ If you find this tool/method useful, please cite the associated paper.
 
 ## Versioning
 
-- Current version: **1.1.0** (`dbm_associator/version.py`).
+- Current version: **1.1.1** (`dbm_associator/version.py`).
 - First stable baseline: **v1.0**.
 - Change history is tracked in `CHANGELOG.md`.
 

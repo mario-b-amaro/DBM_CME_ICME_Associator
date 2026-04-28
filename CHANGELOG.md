@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.1.1] - 2026-04-28
+### Fixed
+- Added pySPEDAS compatibility shim so mission loaders work with both legacy top-level namespaces (`pyspedas.solo`, etc.) and newer namespace layout (`pyspedas.projects.solo`, etc.).
+- Resolved `ImportError: cannot import name projects from pyspedas` on environments with older pySPEDAS versions.
+
 ## [1.1.0] - 2026-04-28
 ### Fixed
 - Fixed Solar Orbiter mission loading for current `pyspedas` API by using `pyspedas.projects.solo.*` instead of the removed top-level `pyspedas.solo` namespace.

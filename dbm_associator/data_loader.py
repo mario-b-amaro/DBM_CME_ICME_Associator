@@ -2,9 +2,21 @@ from dataclasses import dataclass
 
 import numpy as np
 import pytplot
-from pyspedas import projects as sp_projects
+import pyspedas
 
 from .utils import first_existing, mag_mag_components_from_tplot
+
+
+def _mission_api(name: str):
+    """Return mission namespace for both new and old pyspedas layouts."""
+    projects = getattr(pyspedas, 'projects', None)
+    if projects is not None and hasattr(projects, name):
+        return getattr(projects, name)
+    if hasattr(pyspedas, name):
+        return getattr(pyspedas, name)
+    raise ImportError(
+        f"pyspedas mission API '{name}' not found. Available top-level attrs: {sorted(a for a in dir(pyspedas) if not a.startswith('_'))[:30]}"
+    )
 
 
 @dataclass
@@ -45,13 +57,13 @@ class MissionLoader:
         raise ValueError("Unsupported mission.")
 
     def _load_psp(self) -> MissionVars:
-        sp_projects.psp.fields(trange=self.trange, datatype='mag_rtn_1min', level='l2', time_clip=True)
+        _mission_api('psp').fields(trange=self.trange, datatype='mag_rtn_1min', level='l2', time_clip=True)
         t_mag, Br, Bt, Bn = mag_mag_components_from_tplot(['psp_fld_l2_mag_RTN_1min', 'b_mult'])
         if t_mag is None:
             raise RuntimeError("PSP MAG data not found.")
         Bmag = np.sqrt(Br ** 2 + Bt ** 2 + Bn ** 2)
 
-        sp_projects.psp.spc(trange=self.trange, datatype='l3i', level='l3', time_clip=True)
+        _mission_api('psp').spc(trange=self.trange, datatype='l3i', level='l3', time_clip=True)
         v_vec = first_existing('psp_spc_vp_moment_RTN')
         if v_vec is None:
             raise RuntimeError("PSP velocity moments not found.")
@@ -73,7 +85,7 @@ class MissionLoader:
         wp = wp_dat.y
         Tp = (wp ** 2 * 1.6726e-27) / (2.0 * 1.380649e-23)
 
-        sp_projects.psp.spc(trange=self.trange, datatype='l3i', level='l3', time_clip=True, varnames=['sc_pos_HCI'])
+        _mission_api('psp').spc(trange=self.trange, datatype='l3i', level='l3', time_clip=True, varnames=['sc_pos_HCI'])
         pos_name = first_existing('psp_spc_sc_pos_HCI', 'dsc')
         R_sun = np.array([])
         t_pos = np.array([])
@@ -89,7 +101,7 @@ class MissionLoader:
                            np.array(t_n), Np, np.array(t_T), Tp, np.array(t_pos), R_sun)
 
     def _load_solo(self) -> MissionVars:
-        sp_projects.solo.mag(trange=self.trange, datatype='rtn-normal', level='l2', time_clip=True)
+        _mission_api('solo').mag(trange=self.trange, datatype='rtn-normal', level='l2', time_clip=True)
         t_mag, Br, Bt, Bn = mag_mag_components_from_tplot(['B_RTN'])
         if t_mag is None:
             t_mag, Br, Bt, Bn = mag_mag_components_from_tplot(pytplot.tplot_names())
@@ -100,7 +112,7 @@ class MissionLoader:
         tried = False
         for dt in ['pas-mom', 'pas-grnd-mom', 'pas-eflux', 'pas-raw-mom']:
             try:
-                sp_projects.solo.swa(trange=self.trange, datatype=dt, level='l2', time_clip=True)
+                _mission_api('solo').swa(trange=self.trange, datatype=dt, level='l2', time_clip=True)
                 tried = True
             except Exception:
                 pass
@@ -138,7 +150,7 @@ class MissionLoader:
                            np.array(t_n), Np, np.array(t_T), Tp, np.array([]), np.array([]))
 
     def _load_wind(self) -> MissionVars:
-        sp_projects.wind.mfi(trange=self.trange, time_clip=True)
+        _mission_api('wind').mfi(trange=self.trange, time_clip=True)
         t_mag, Br, Bt, Bn = mag_mag_components_from_tplot(['BGSE', 'BGSEc'])
         if t_mag is None:
             t_mag, Br, Bt, Bn = mag_mag_components_from_tplot(pytplot.tplot_names())
@@ -146,7 +158,7 @@ class MissionLoader:
             raise RuntimeError("Wind MFI vector not found.")
         Bmag = np.sqrt(Br ** 2 + Bt ** 2 + Bn ** 2)
 
-        sp_projects.wind.swe(trange=self.trange, time_clip=True)
+        _mission_api('wind').swe(trange=self.trange, time_clip=True)
         names = pytplot.tplot_names()
         n_name = first_existing('Np', 'proton_density', 'N_p', 'density')
         if n_name is None:
@@ -187,7 +199,7 @@ class MissionLoader:
                            np.array(n_dat.times), n_dat.y, np.array(t_T), Tp, np.array([]), np.array([]))
 
     def _load_ace(self) -> MissionVars:
-        sp_projects.ace.mfi(trange=self.trange, time_clip=True)
+        _mission_api('ace').mfi(trange=self.trange, time_clip=True)
         t_mag, Br, Bt, Bn = mag_mag_components_from_tplot(['BGSEc', 'BGSE'])
         if t_mag is None:
             t_mag, Br, Bt, Bn = mag_mag_components_from_tplot(pytplot.tplot_names())
@@ -195,7 +207,7 @@ class MissionLoader:
             raise RuntimeError("ACE MFI vector not found.")
         Bmag = np.sqrt(Br ** 2 + Bt ** 2 + Bn ** 2)
 
-        sp_projects.ace.swe(trange=self.trange, time_clip=True)
+        _mission_api('ace').swe(trange=self.trange, time_clip=True)
         n_name = first_existing('Np', 'proton_density', 'N_p')
         if n_name is None:
             raise RuntimeError("ACE: density not found.")
