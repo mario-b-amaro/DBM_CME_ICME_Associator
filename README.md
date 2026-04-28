@@ -57,6 +57,9 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+> Note: `pytplot` currently relies on Bokeh 2.x APIs. If you see `ModuleNotFoundError: No module named 'bokeh.plotting.figure'`, run `pip install "bokeh<3"` and then reinstall dependencies.
+
+
 ---
 
 ## How to use the GUI
