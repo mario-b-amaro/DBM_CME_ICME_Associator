@@ -1,7 +1,8 @@
-numpy
-scipy
-matplotlib
-PyQt5
-requests
-pyspedas
-pytplot
+numpy>=1.24
+scipy>=1.10
+matplotlib>=3.7
+PyQt5>=5.15
+requests>=2.31
+pyspedas>=2.1.0
+pytplot>=1.7.28
+bokeh>=3.0
