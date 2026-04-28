@@ -57,8 +57,8 @@ class MissionLoader:
         raise ValueError("Unsupported mission.")
 
     def _load_psp(self) -> MissionVars:
-        _mission_api('psp').fields(trange=self.trange, datatype='mag_rtn_1min', level='l2', time_clip=True)
-        t_mag, Br, Bt, Bn = mag_mag_components_from_tplot(['psp_fld_l2_mag_RTN_1min', 'b_mult'])
+        mag_vars = _mission_api('psp').fields(trange=self.trange, datatype='mag_rtn_1min', level='l2', time_clip=True)
+        t_mag, Br, Bt, Bn = mag_mag_components_from_tplot(['psp_fld_l2_mag_RTN_1min', 'psp_fld_l2_mag_RTN', 'b_mult'] + (mag_vars or []))
         if t_mag is None:
             raise RuntimeError("PSP MAG data not found.")
         Bmag = np.sqrt(Br ** 2 + Bt ** 2 + Bn ** 2)
@@ -101,8 +101,8 @@ class MissionLoader:
                            np.array(t_n), Np, np.array(t_T), Tp, np.array(t_pos), R_sun)
 
     def _load_solo(self) -> MissionVars:
-        _mission_api('solo').mag(trange=self.trange, datatype='rtn-normal', level='l2', time_clip=True)
-        t_mag, Br, Bt, Bn = mag_mag_components_from_tplot(['B_RTN'])
+        mag_vars = _mission_api('solo').mag(trange=self.trange, datatype='rtn-normal', level='l2', time_clip=True)
+        t_mag, Br, Bt, Bn = mag_mag_components_from_tplot(['B_RTN'] + (mag_vars or []))
         if t_mag is None:
             t_mag, Br, Bt, Bn = mag_mag_components_from_tplot(pytplot.tplot_names())
         if t_mag is None:
@@ -150,8 +150,8 @@ class MissionLoader:
                            np.array(t_n), Np, np.array(t_T), Tp, np.array([]), np.array([]))
 
     def _load_wind(self) -> MissionVars:
-        _mission_api('wind').mfi(trange=self.trange, time_clip=True)
-        t_mag, Br, Bt, Bn = mag_mag_components_from_tplot(['BGSE', 'BGSEc'])
+        mag_vars = _mission_api('wind').mfi(trange=self.trange, time_clip=True)
+        t_mag, Br, Bt, Bn = mag_mag_components_from_tplot(['BGSE', 'BGSEc'] + (mag_vars or []))
         if t_mag is None:
             t_mag, Br, Bt, Bn = mag_mag_components_from_tplot(pytplot.tplot_names())
         if t_mag is None:
@@ -172,8 +172,13 @@ class MissionLoader:
         if v_name is not None:
             v_dat = pytplot.get_data(v_name)
             t_v = v_dat.times
-            Vrad = v_dat.y
-            Vx, Vy, Vz = Vrad, np.zeros_like(Vrad), np.zeros_like(Vrad)
+            if np.asarray(v_dat.y).ndim == 1:
+                Vrad = v_dat.y
+                Vx, Vy, Vz = Vrad, np.zeros_like(Vrad), np.zeros_like(Vrad)
+            else:
+                v_arr = np.asarray(v_dat.y)
+                Vx, Vy, Vz = v_arr[:, 0], v_arr[:, 1], v_arr[:, 2]
+                Vrad = Vx
         else:
             v_vec = first_existing('VGSE', 'V_GSE', 'velocity_gse', 'velocity')
             if v_vec is None:
@@ -199,8 +204,8 @@ class MissionLoader:
                            np.array(n_dat.times), n_dat.y, np.array(t_T), Tp, np.array([]), np.array([]))
 
     def _load_ace(self) -> MissionVars:
-        _mission_api('ace').mfi(trange=self.trange, time_clip=True)
-        t_mag, Br, Bt, Bn = mag_mag_components_from_tplot(['BGSEc', 'BGSE'])
+        mag_vars = _mission_api('ace').mfi(trange=self.trange, time_clip=True)
+        t_mag, Br, Bt, Bn = mag_mag_components_from_tplot(['BGSEc', 'BGSE'] + (mag_vars or []))
         if t_mag is None:
             t_mag, Br, Bt, Bn = mag_mag_components_from_tplot(pytplot.tplot_names())
         if t_mag is None:
@@ -217,8 +222,14 @@ class MissionLoader:
         if v_name is None:
             raise RuntimeError("ACE: Vp not found.")
         v_dat = pytplot.get_data(v_name)
-        t_v, Vrad = v_dat.times, v_dat.y
-        Vx, Vy, Vz = Vrad, np.zeros_like(Vrad), np.zeros_like(Vrad)
+        t_v = v_dat.times
+        if np.asarray(v_dat.y).ndim == 1:
+            Vrad = v_dat.y
+            Vx, Vy, Vz = Vrad, np.zeros_like(Vrad), np.zeros_like(Vrad)
+        else:
+            v_arr = np.asarray(v_dat.y)
+            Vx, Vy, Vz = v_arr[:, 0], v_arr[:, 1], v_arr[:, 2]
+            Vrad = Vx
 
         T_name = first_existing('Tpr', 'Tp', 'proton_temperature')
         if T_name is None:
