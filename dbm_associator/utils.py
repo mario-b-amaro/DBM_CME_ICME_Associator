@@ -74,6 +74,51 @@ def mag_mag_components_from_tplot(base_name_candidates):
                 by = pytplot.get_data(root + '_y')
                 bz = pytplot.get_data(root + '_z')
                 return bx.times, bx.y, by.y, bz.y
+    # 2b) Handle missions that publish magnetic components as individual scalar
+    # variables instead of a vector tplot variable (common naming patterns).
+    lower_names = {nm.lower(): nm for nm in names}
+    scalar_triplets = [
+        ('br', 'bt', 'bn'),
+        ('b_r', 'b_t', 'b_n'),
+        ('bx', 'by', 'bz'),
+        ('b_x', 'b_y', 'b_z'),
+        ('b0', 'b1', 'b2'),
+        ('b_0', 'b_1', 'b_2'),
+    ]
+
+    for c0, c1, c2 in scalar_triplets:
+        if c0 in lower_names and c1 in lower_names and c2 in lower_names:
+            d0 = pytplot.get_data(lower_names[c0])
+            d1 = pytplot.get_data(lower_names[c1])
+            d2 = pytplot.get_data(lower_names[c2])
+            if d0 is not None and d1 is not None and d2 is not None:
+                return d0.times, d0.y, d1.y, d2.y
+
+    # Prefix-aware variant (e.g., psp_fld_l2_mag_br, ..._bt, ..._bn).
+    by_prefix = {}
+    for nm in names:
+        m = re.match(r'^(.*?)(?:_)?(br|bt|bn|bx|by|bz|b0|b1|b2|b_r|b_t|b_n|b_x|b_y|b_z|b_0|b_1|b_2)$',
+                     nm.lower())
+        if m:
+            pref, comp = m.group(1), m.group(2)
+            by_prefix.setdefault(pref, {})[comp] = nm
+
+    component_sets = [
+        ('br', 'bt', 'bn'),
+        ('b_r', 'b_t', 'b_n'),
+        ('bx', 'by', 'bz'),
+        ('b_x', 'b_y', 'b_z'),
+        ('b0', 'b1', 'b2'),
+        ('b_0', 'b_1', 'b_2'),
+    ]
+    for comp_map in by_prefix.values():
+        for c0, c1, c2 in component_sets:
+            if c0 in comp_map and c1 in comp_map and c2 in comp_map:
+                d0 = pytplot.get_data(comp_map[c0])
+                d1 = pytplot.get_data(comp_map[c1])
+                d2 = pytplot.get_data(comp_map[c2])
+                if d0 is not None and d1 is not None and d2 is not None:
+                    return d0.times, d0.y, d1.y, d2.y
     # 3) Final fallback: any vector-like variable.
     for nm in names:
         dat = pytplot.get_data(nm)
